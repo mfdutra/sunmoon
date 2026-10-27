@@ -126,6 +126,129 @@ $(function () {
     MOON_PHASES.find((phase) => fraction <= phase.max) ||
     MOON_PHASES[MOON_PHASES.length - 1];
 
+  // Geocentric ecliptic coordinates of the moon, in degrees. SunCalc computes these
+  // internally but doesn't export them, so this is the leading terms of Meeus' series
+  // (Astronomical Algorithms, ch. 47, tables 47.A and 47.B), whose arguments are:
+  // D = mean elongation, M = sun's mean anomaly, Mp = moon's mean anomaly, F = moon's
+  // argument of latitude (angular distance from the ascending node). Terms are
+  // [D, M, Mp, F, coefficient in degrees]; each dropped term is under 0.005°. The
+  // eccentricity factor on M terms (≈0.9993 today) and the ~1 min TT/UT difference are
+  // ignored, both far below display precision.
+  const moonFundamentals = (date) => {
+    const t = (date.getTime() / 86400000 - 10957.5) / 36525; // Julian centuries since J2000
+    return {
+      t,
+      Lp: 218.3164477 + 481267.88123421 * t, // mean longitude
+      D: 297.8501921 + 445267.1114034 * t,
+      M: 357.5291092 + 35999.0502909 * t,
+      Mp: 134.9633964 + 477198.8675055 * t,
+      F: 93.272095 + 483202.0175233 * t,
+    };
+  };
+
+  const sumMoonSeries = (terms, { D, M, Mp, F }) =>
+    terms.reduce(
+      (sum, [d, m, mp, f, coeff]) =>
+        sum + coeff * Math.sin((Math.PI / 180) * (d * D + m * M + mp * Mp + f * F)),
+      0
+    );
+
+  // Latitude: the dominant 5.128° sin F term is the orbit's inclination; the rest are
+  // perturbations. Stays within ~0.03° of SunCalc's full internal series.
+  const MOON_LATITUDE_TERMS = [
+    [0, 0, 0, 1, 5.128122],
+    [0, 0, 1, 1, 0.280602],
+    [0, 0, 1, -1, 0.277693],
+    [2, 0, 0, -1, 0.173237],
+    [2, 0, -1, 1, 0.055413],
+    [2, 0, -1, -1, 0.046271],
+    [2, 0, 0, 1, 0.032573],
+    [0, 0, 2, 1, 0.017198],
+    [2, 0, 1, -1, 0.009266],
+    [0, 0, 2, -1, 0.008822],
+    [2, -1, 0, -1, 0.008216],
+    [2, 0, -2, -1, 0.004324],
+    [2, 0, 1, 1, 0.0042],
+  ];
+
+  // Longitude: corrections to the mean longitude Lp. 6.289° sin Mp is the equation of
+  // centre (orbital eccentricity); 1.274° is evection, 0.658° variation, 0.186° the
+  // annual equation.
+  const MOON_LONGITUDE_TERMS = [
+    [0, 0, 1, 0, 6.288774],
+    [2, 0, -1, 0, 1.274027],
+    [2, 0, 0, 0, 0.658314],
+    [0, 0, 2, 0, 0.213618],
+    [0, 1, 0, 0, -0.185116],
+    [0, 0, 0, 2, -0.114332],
+    [2, 0, -2, 0, 0.058793],
+    [2, -1, -1, 0, 0.057066],
+    [2, 0, 1, 0, 0.053322],
+    [2, -1, 0, 0, 0.045758],
+    [0, 1, -1, 0, -0.040923],
+    [1, 0, 0, 0, -0.03472],
+    [0, 1, 1, 0, -0.030383],
+    [2, 0, 0, -2, 0.015327],
+    [0, 0, 1, 2, -0.012528],
+    [0, 0, 1, -2, 0.01098],
+    [4, 0, -1, 0, 0.010675],
+    [0, 0, 3, 0, 0.010034],
+    [4, 0, -2, 0, 0.008548],
+    [2, 1, -1, 0, -0.007888],
+    [2, 1, 0, 0, -0.006766],
+    [1, 0, -1, 0, -0.005163],
+    [1, 1, 0, 0, 0.004987],
+    [2, -1, 1, 0, 0.004036],
+  ];
+
+  // Positive = north of / above the ecliptic.
+  const moonEclipticLatitude = (date) =>
+    sumMoonSeries(MOON_LATITUDE_TERMS, moonFundamentals(date));
+
+  // Geocentric declination: rotate ecliptic (λ, β) into equatorial coordinates by the
+  // obliquity ε — sin δ = sin β cos ε + cos β sin ε sin λ. Unlike the ecliptic latitude,
+  // this swings ±(23.4° ± 5.1°) over a month, as the moon's longitude carries it along
+  // the tilted ecliptic.
+  const moonDeclination = (date) => {
+    const rad = Math.PI / 180;
+    const args = moonFundamentals(date);
+    const lambda = rad * (args.Lp + sumMoonSeries(MOON_LONGITUDE_TERMS, args));
+    const beta = rad * sumMoonSeries(MOON_LATITUDE_TERMS, args);
+    const eps = rad * (23.4392911 - 0.0130042 * args.t);
+    return (
+      Math.asin(
+        Math.sin(beta) * Math.cos(eps) + Math.cos(beta) * Math.sin(eps) * Math.sin(lambda)
+      ) / rad
+    );
+  };
+
+  // Direction of change by central difference over an hour — even at the turning
+  // points the rate is nonzero except at the exact instant of the extremum.
+  const trendAt = (fn, date) => {
+    const halfHour = 30 * 60 * 1000;
+    return Math.sign(
+      fn(new Date(date.getTime() + halfHour)) - fn(new Date(date.getTime() - halfHour))
+    );
+  };
+
+  const renderTrend = ($trend, trend) =>
+    $trend
+      .text(trend > 0 ? "▲" : "▼")
+      .attr("title", trend > 0 ? "Moving up (north)" : "Moving down (south)");
+
+  // Shared by the Moon card and the moon's sky track view.
+  const renderMoonEcliptic = ($value, $trend, date) => {
+    const latitude = moonEclipticLatitude(date);
+    $value.text(`${formatDegrees(Math.abs(latitude))} ${latitude >= 0 ? "above" : "below"}`);
+    renderTrend($trend, trendAt(moonEclipticLatitude, date));
+  };
+
+  const renderMoonDeclination = ($value, $trend, date) => {
+    const declination = moonDeclination(date);
+    $value.text(`${declination >= 0 ? "+" : "−"}${formatDegrees(Math.abs(declination))}`);
+    renderTrend($trend, trendAt(moonDeclination, date));
+  };
+
   const LOCATION_STORAGE_KEY = "sunmoon.lastLocation";
 
   // localStorage can throw (private browsing, quota, disabled storage) — a cache
@@ -346,6 +469,8 @@ $(function () {
     $("#moonset").text(times.set ? formatTime(times.set) : "None today");
     $("#moonIllumination").text(`${(illumination.fraction * 100).toFixed(0)}%`);
     $("#moonPhase").text(phase.name);
+    renderMoonEcliptic($("#moonEcliptic"), $("#moonEclipticTrend"), date);
+    renderMoonDeclination($("#moonDeclination"), $("#moonDeclinationTrend"), date);
     updateMoonIcon(illumination.fraction, localLimbAngle);
   };
 
@@ -394,6 +519,7 @@ $(function () {
       color: "#eef1f8",
       position: (date, lat, lon) => SunCalc.getMoonPosition(date, lat, lon),
       times: moonTimesForLocalDay,
+      showMoonExtras: true,
     },
   };
 
@@ -568,6 +694,11 @@ $(function () {
       .text(formatDegrees(track.peak.altitude))
       .toggleClass("negative", track.peak.altitude < 0);
     $("#skyPeakTime").text(formatTime(new Date(track.peak.t)));
+    $(".sky-moon-only").toggleClass("hidden", !body.showMoonExtras);
+    if (body.showMoonExtras) {
+      renderMoonEcliptic($("#skyEcliptic"), $("#skyEclipticTrend"), date);
+      renderMoonDeclination($("#skyDeclination"), $("#skyDeclinationTrend"), date);
+    }
 
     // The second note explains a missing marker, so it's only relevant when a marker
     // would have been drawn at all.

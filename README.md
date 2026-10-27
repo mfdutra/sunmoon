@@ -9,8 +9,8 @@ It works offline and can be installed to your home screen or desktop like a nati
 ## Features
 
 - **Sun card** — elevation, azimuth (with a compass arrow), sunrise, sunset, solar noon and day length, plus a plot of the sun's altitude across the day with a marker for its current position.
-- **Moon card** — elevation, azimuth, moonrise, moonset, illumination percentage and phase name, with an icon that draws the illuminated limb at the correct angle as seen from where you are.
-- **Sky track** — a whole-sky view of the selected day: zenith at the centre, horizon at the rim, north up and east right. Shows the body's path across the sky with hour markers, rise/set points on the horizon, and its current position. Step forward and back a day at a time.
+- **Moon card** — elevation, azimuth, moonrise, moonset, illumination percentage, phase name, how far above or below the ecliptic the moon is, and its declination (each with whether it's moving up or down), with an icon that draws the illuminated limb at the correct angle as seen from where you are.
+- **Sky track** — a whole-sky view of the selected day: zenith at the centre, horizon at the rim, north up and east right. Shows the body's path across the sky with hour markers, rise/set points on the horizon, and its current position; for the moon, also its ecliptic offset and declination. Step forward and back a day at a time.
 - **Any location** — uses your device's location, or type in a latitude and longitude by hand. The last location is remembered, so the app renders instantly on the next launch.
 - **Any date and time** — pick a moment to see where things were, or will be.
 - **Works offline** — a service worker caches the whole app; no network needed after the first visit, and no data is sent anywhere.

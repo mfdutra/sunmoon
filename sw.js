@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-const CACHE_NAME = "sunmoon-v20";
+const CACHE_NAME = "sunmoon-v23";
 
 const PRECACHE_URLS = [
   "./",

@@ -357,6 +357,8 @@
     <div class="data-item"><div class="label">Moonset</div><div class="value" id="moonset">&mdash;</div></div>
     <div class="data-item"><div class="label">Illumination</div><div class="value" id="moonIllumination">&mdash;</div></div>
     <div class="data-item"><div class="label">Phase</div><div class="value" id="moonPhase">&mdash;</div></div>
+    <div class="data-item"><div class="label">Ecliptic</div><div class="value"><span id="moonEcliptic">&mdash;</span><span class="azimuth-arrow" id="moonEclipticTrend"></span></div></div>
+    <div class="data-item"><div class="label">Declination</div><div class="value"><span id="moonDeclination">&mdash;</span><span class="azimuth-arrow" id="moonDeclinationTrend"></span></div></div>
   </div>
   <button class="secondary card-action" data-sky="moon">Sky track</button>
 </div>
@@ -405,6 +407,8 @@
       <div class="data-item"><div class="label">Set</div><div class="value" id="skySet">&mdash;</div></div>
       <div class="data-item"><div class="label">Max elevation</div><div class="value" id="skyPeak">&mdash;</div></div>
       <div class="data-item"><div class="label">Highest at</div><div class="value" id="skyPeakTime">&mdash;</div></div>
+      <div class="data-item hidden sky-moon-only"><div class="label">Ecliptic</div><div class="value"><span id="skyEcliptic">&mdash;</span><span class="azimuth-arrow" id="skyEclipticTrend"></span></div></div>
+      <div class="data-item hidden sky-moon-only"><div class="label">Declination</div><div class="value"><span id="skyDeclination">&mdash;</span><span class="azimuth-arrow" id="skyDeclinationTrend"></span></div></div>
     </div>
     <p id="skyNote"></p>
   </div>
